@@ -9,6 +9,7 @@ from datetime import datetime
 gpio = "D17" # Pi5 GPIO Pin
 dht = adafruit_dht.DHT22(getattr(board, gpio))
 url = "http://IP_of_pc_that_run_backend:5000/api/getDataDHT"
+error = "http://IP_of_pc_that_run_backend:5000/api/ErrorLog"
 
 while True:
 
@@ -36,6 +37,13 @@ while True:
 
 	except RuntimeError as error:
 		print(f"{timestamp} ({gpio}) Reading error:", error.args[0])
+		ErrorData = {
+			"sensorID": 1,
+			"errorType": "RuntimeError",
+			"errorMessage": error.args[0],
+			"createdAt": timestamp
+		}
+		r = requests.post(error, json=ErrorData, timeout=5) 
 	except Exception as e:
 		print("Error:", e)
 
