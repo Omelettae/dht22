@@ -6,9 +6,21 @@ import adafruit_dht # DHT Library
 from datetime import datetime
 
 # DHT22 Sensor
+name = "Pi4-2" # name in database
 gpio = "D17" # Pi5 GPIO Pin
 dht = adafruit_dht.DHT22(getattr(board, gpio))
 url = "http://IP_of_pc_that_run_backend:5000/api/getDataDHT"
+
+class API_Error(Exception):
+	def __init__(self, message):
+		super().__init__(message)
+
+r = requests.get(url, timeout=5)
+if r.status_code != 200:
+	print(r)
+	exit()
+
+
 
 while True:
 
@@ -21,22 +33,26 @@ while True:
 		vpd = 0.6108 * math.exp((17.27*temperature)/(temperature+237.3)) * (1-(humidity/100))
 		
 		data = {
-			"sensorID": 1,
+			"sensorID": 6,
 			"temperature": temperature,
 			"humidity": humidity,
 			"VPD": vpd,
 			"time": timestamp
 		}
-		
-		r = requests.post(url, json=data, timeout=5) 
+	
+		r = requests.post(url+"/api/getDataDHT", json=data, timeout=5) 
 		if (r.status_code != 200):
 			print(r)
-			break
-		print(f"{timestamp} ({gpio}) Temp: {temperature:.1f}°C Humidity: {humidity:.1f}% VPD: {vpd:.1f}kPa post: {r.status_code}")
+			raise API_Error("r")
+		print(f"{timestamp} ({name}) Temp: {temperature:.1f}°C Humidity: {humidity:.1f}% VPD: {vpd:.1f}kPa post: {r.status_code}")
 
-	except RuntimeError as error:
-		print(f"{timestamp} ({gpio}) Reading error:", error.args[0])
 	except Exception as e:
-		print("Error:", e)
+		data = {
+			"sensorID": 6,
+			"errorType": type(e).__name__,
+			"errorMessage": str(e)
+		}
+		r= requests.post(url+"/api/ErrorLog", json=data, timeout=5)
+		print(f"{timestamp} ({name}) Reading error:", e.args[0])
 
 	time.sleep(2)
